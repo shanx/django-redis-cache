@@ -407,25 +407,13 @@ class BaseRedisCache(BaseCache):
         value = self.get(key._original_key)
 
         if value is None:
+            # calculate value of `func`.
+            value = func()
 
-            dogpile_lock_key = "_lock" + key._versioned_key
-            dogpile_lock = client.get(dogpile_lock_key)
+            timeout = self.get_timeout(timeout)
 
-            if dogpile_lock is None:
-                # Set the dogpile lock.
-                self._set(client, dogpile_lock_key, 0, None)
-
-                # calculate value of `func`.
-                try:
-                    value = func()
-                finally:
-                    # Regardless of error, release the dogpile lock.
-                    client.expire(dogpile_lock_key, -1)
-
-                timeout = self.get_timeout(timeout)
-
-                # Set value of `func` and set timeout
-                self._set(client, key, self.prep_value(value), timeout)
+            # Set value of `func` and set timeout
+            self._set(client, key, self.prep_value(value), timeout)
 
         return value
 
